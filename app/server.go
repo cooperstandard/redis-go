@@ -22,10 +22,27 @@ func main() {
 		os.Exit(1)
 	}
 	conn, err := l.Accept()
-	if err != nil {
-		fmt.Println("Error accepting connection: ", err.Error())
-		os.Exit(1)
+	for {
+		if err != nil {
+			fmt.Println("Error accepting connection: ", err.Error())
+			os.Exit(1)
+		}
+		handleConnection(conn)
 	}
 
-	conn.Write([]byte("+PONG\r\n"))
+	// conn.Write([]byte("+PONG\r\n"))
+}
+func handleConnection(conn net.Conn) {
+	b := make([]byte, 128)
+	_, err := conn.Read(b)
+	if err != nil {
+		fmt.Println("Error reading connection: ", err.Error())
+		os.Exit(1)
+	}
+	fmt.Println("Message received: ", b)
+	_, err = conn.Write([]byte("+PONG\r\n"))
+	if err != nil {
+		fmt.Println("Error writing connection: ", err.Error())
+		os.Exit(1)
+	}
 }
