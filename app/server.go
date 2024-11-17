@@ -2,8 +2,13 @@ package main
 
 import (
 	"fmt"
+	"log/slog"
 	"net"
 	"os"
+)
+
+const (
+	receiveBuf = 1024
 )
 
 // Ensures gofmt doesn't remove the "net" and "os" imports in stage 1 (feel free to remove this!)
@@ -21,30 +26,41 @@ func main() {
 		fmt.Println("Failed to bind to port 6379")
 		os.Exit(1)
 	}
+	defer func() {
+		l.Close()
+	}()
+
 	for {
 		conn, err := l.Accept()
 		if err != nil {
 			fmt.Println("Error accepting connection: ", err.Error())
 			os.Exit(1)
 		}
-		handleConnection(conn)
+		go handleConnection(conn)
 	}
 
 	// conn.Write([]byte("+PONG\r\n"))
 }
 func handleConnection(conn net.Conn) {
+	defer func() {
+		conn.Close()
+	}()
+
 	for {
-		b := make([]byte, 128)
-		n, err := conn.Read(b)
+		buffer := make([]byte, receiveBuf)
+		n, err := conn.Read(buffer)
 		if err != nil {
-			fmt.Println("Error reading connection: ", err.Error())
+			slog.Error("reading", "err", err)
 			os.Exit(1)
 		}
-		fmt.Println("Message received: ", b[:n])
+
 		_, err = conn.Write([]byte("+PONG\r\n"))
+
 		if err != nil {
-			fmt.Println("Error writing connection: ", err.Error())
-			os.Exit(1)
+			slog.Error("writing", "err", err)
 		}
+		cmd := buffer[:n]
+		slog.Info("Received", "len", len(cmd), "str", cmd)
+
 	}
 }
